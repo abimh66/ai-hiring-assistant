@@ -1,6 +1,8 @@
-import { createFileRoute, Link, Outlet, redirect, useNavigate } from '@tanstack/react-router'
-import { clearTokens, isAuthenticated } from '@/lib/auth'
-import { Button } from '@/components/ui/button'
+import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
+import { isAuthenticated } from '@/lib/auth'
+import { AppSidebar } from '@/components/app-sidebar'
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { Separator } from '@/components/ui/separator'
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: () => {
@@ -12,26 +14,18 @@ export const Route = createFileRoute('/_authenticated')({
 })
 
 function AuthenticatedLayout() {
-  const navigate = useNavigate()
-
-  function handleLogout() {
-    clearTokens()
-    navigate({ to: '/login' })
-  }
-
   return (
-    <div className="min-h-screen bg-muted/20">
-      <header className="flex items-center justify-between border-b bg-background px-6 py-3">
-        <Link to="/hiring-projects" className="font-semibold">
-          AI Hiring Assistant
-        </Link>
-        <Button variant="ghost" onClick={handleLogout}>
-          Log out
-        </Button>
-      </header>
-      <main className="mx-auto max-w-5xl p-6">
-        <Outlet />
-      </main>
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-14 items-center gap-2 border-b px-4">
+          <SidebarTrigger />
+          <Separator orientation="vertical" className="h-4" />
+        </header>
+        <main className="mx-auto w-full max-w-5xl flex-1 p-6">
+          <Outlet />
+        </main>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
