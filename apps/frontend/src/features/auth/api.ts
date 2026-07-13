@@ -8,3 +8,7 @@ export function login(email: string, password: string): Promise<TokenResponse> {
 export function getCurrentUser(): Promise<UserRead> {
   return apiGet<UserRead>('/auth/me')
 }
+
+export function acceptInvite(token: string, password: string): Promise<TokenResponse> {
+  return apiPost<TokenResponse>('/auth/accept-invite', { token, password })
+}

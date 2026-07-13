@@ -8,5 +8,7 @@ export interface UserRead {
   id: number
   email: string
   full_name: string
+  is_active: boolean
+  is_pending: boolean
   created_at: string
 }
