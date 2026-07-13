@@ -1,0 +1,75 @@
+from fastapi import APIRouter, Depends, File, Form, UploadFile
+from sqlmodel import Session
+
+from app.core.deps import get_current_user
+from app.db.session import get_session
+from app.modules.applications.schemas import ApplicationCreate, ApplicationRead, ApplicationUpdate
+from app.modules.applications.service import (
+    create_application_with_resume,
+    get_application_or_404,
+    list_applications_for_project,
+    update_application_status,
+    upload_interview_notes,
+)
+from app.modules.hiring_projects.service import get_hiring_project_or_404
+
+project_applications_router = APIRouter(
+    prefix="/hiring-projects/{hiring_project_id}/applications",
+    tags=["applications"],
+    dependencies=[Depends(get_current_user)],
+)
+
+applications_router = APIRouter(
+    prefix="/applications",
+    tags=["applications"],
+    dependencies=[Depends(get_current_user)],
+)
+
+
+@project_applications_router.get("", response_model=list[ApplicationRead])
+def list_project_applications(hiring_project_id: int, session: Session = Depends(get_session)):
+    get_hiring_project_or_404(session, hiring_project_id)
+    return list_applications_for_project(session, hiring_project_id)
+
+
+@project_applications_router.post("", response_model=ApplicationRead, status_code=201)
+async def create_application(
+    hiring_project_id: int,
+    candidate_email: str = Form(...),
+    candidate_full_name: str = Form(...),
+    candidate_phone: str | None = Form(None),
+    resume: UploadFile = File(...),
+    session: Session = Depends(get_session),
+):
+    get_hiring_project_or_404(session, hiring_project_id)
+    payload = ApplicationCreate(
+        candidate_email=candidate_email,
+        candidate_full_name=candidate_full_name,
+        candidate_phone=candidate_phone,
+    )
+    return await create_application_with_resume(session, hiring_project_id, payload, resume)
+
+
+@applications_router.get("/{application_id}", response_model=ApplicationRead)
+def get_application(application_id: int, session: Session = Depends(get_session)):
+    return get_application_or_404(session, application_id)
+
+
+@applications_router.patch("/{application_id}", response_model=ApplicationRead)
+def patch_application(
+    application_id: int,
+    payload: ApplicationUpdate,
+    session: Session = Depends(get_session),
+):
+    application = get_application_or_404(session, application_id)
+    return update_application_status(session, application, payload)
+
+
+@applications_router.post("/{application_id}/interview-notes", response_model=ApplicationRead)
+async def add_interview_notes(
+    application_id: int,
+    notes: UploadFile = File(...),
+    session: Session = Depends(get_session),
+):
+    application = get_application_or_404(session, application_id)
+    return await upload_interview_notes(session, application, notes)
