@@ -3,8 +3,8 @@
 # or both values.
 projects:
   agent-backend: 'apps/agent-backend'
-  app-frontend: 'apps/frontend'
-  agent-frontend: 'apps/agent-frontend'
+  frontend: 'apps/frontend'
+  rag-backend: 'apps/rag-backend'
 
 # Configures the version control system (VCS). Also known as
 # source code management (SCM).
