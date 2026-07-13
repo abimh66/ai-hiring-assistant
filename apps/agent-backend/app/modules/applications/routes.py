@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlmodel import Session
 
 from app.core.deps import get_current_user
@@ -12,6 +12,7 @@ from app.modules.applications.service import (
     upload_interview_notes,
 )
 from app.modules.hiring_projects.service import get_hiring_project_or_404
+from app.modules.storage.client import get_file_url
 
 project_applications_router = APIRouter(
     prefix="/hiring-projects/{hiring_project_id}/applications",
@@ -73,3 +74,19 @@ async def add_interview_notes(
 ):
     application = get_application_or_404(session, application_id)
     return await upload_interview_notes(session, application, notes)
+
+
+@applications_router.get("/{application_id}/resume-url")
+def get_resume_url(application_id: int, session: Session = Depends(get_session)) -> dict[str, str]:
+    application = get_application_or_404(session, application_id)
+    return {"url": get_file_url(application.resume_file_key)}
+
+
+@applications_router.get("/{application_id}/interview-notes-url")
+def get_interview_notes_url(
+    application_id: int, session: Session = Depends(get_session)
+) -> dict[str, str]:
+    application = get_application_or_404(session, application_id)
+    if application.interview_notes_file_key is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No interview notes uploaded")
+    return {"url": get_file_url(application.interview_notes_file_key)}
