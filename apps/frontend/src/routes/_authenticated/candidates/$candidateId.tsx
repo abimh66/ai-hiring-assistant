@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { getCandidate, listCandidateApplications } from '@/features/candidates/api'
 import {
@@ -120,6 +120,12 @@ function ApplicationRow({
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" onClick={openResume}>
           View resume
+        </Button>
+
+        <Button variant="outline" size="sm" render={
+          <Link to="/applications/$applicationId" params={{ applicationId: String(application.id) }} />
+        }>
+          View resume analysis
         </Button>
 
         {application.interview_notes_file_key ? (

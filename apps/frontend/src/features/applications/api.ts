@@ -1,8 +1,9 @@
-import { apiGet, apiPatch, apiPostForm } from '@/lib/api-client'
+import { apiGet, apiPatch, apiPost, apiPostForm } from '@/lib/api-client'
 import type {
   Application,
   ApplicationUpdateInput,
   ApplicationUploadResult,
+  ResumeAnalysis,
 } from '@/features/applications/types'
 
 export function listApplicationsForProject(hiringProjectId: number): Promise<Application[]> {
@@ -42,4 +43,12 @@ export function getResumeUrl(id: number): Promise<{ url: string }> {
 
 export function getInterviewNotesUrl(id: number): Promise<{ url: string }> {
   return apiGet<{ url: string }>(`/applications/${id}/interview-notes-url`)
+}
+
+export function getResumeAnalysis(id: number): Promise<ResumeAnalysis> {
+  return apiGet<ResumeAnalysis>(`/applications/${id}/resume-analysis`)
+}
+
+export function retryResumeAnalysis(id: number): Promise<ResumeAnalysis> {
+  return apiPost<ResumeAnalysis>(`/applications/${id}/resume-analysis/retry`)
 }
