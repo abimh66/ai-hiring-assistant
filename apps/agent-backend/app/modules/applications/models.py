@@ -15,9 +15,10 @@ class Application(SQLModel, table=True):
     __tablename__ = "applications"
 
     id: int | None = Field(default=None, primary_key=True)
-    candidate_id: int = Field(foreign_key="candidates.id")
+    candidate_id: int | None = Field(default=None, foreign_key="candidates.id")
     hiring_project_id: int = Field(foreign_key="hiring_projects.id")
     resume_file_key: str
+    resume_original_filename: str
     interview_notes_file_key: str | None = None
     status: ApplicationStatus = Field(default=ApplicationStatus.new)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
