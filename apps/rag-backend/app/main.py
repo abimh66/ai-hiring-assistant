@@ -12,6 +12,7 @@ from app.agents.shortlisting import shortlist_agent
 from app.api.candidate_matching import router as candidate_matching_router
 from app.api.resume_analysis import router as resume_analysis_router
 from app.api.resume_embed import router as resume_embed_router
+from app.api.shortlisting import router as shortlisting_router
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -32,6 +33,7 @@ base_app = FastAPI()
 base_app.include_router(resume_analysis_router)
 base_app.include_router(resume_embed_router)
 base_app.include_router(candidate_matching_router)
+base_app.include_router(shortlisting_router)
 
 agent_os = AgentOS(
     id="rag-backend",
