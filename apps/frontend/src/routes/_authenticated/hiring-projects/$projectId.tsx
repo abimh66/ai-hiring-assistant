@@ -1,11 +1,10 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useDropzone } from 'react-dropzone'
 import { getHiringProject } from '@/features/hiring-projects/api'
-import { createApplication, listApplicationsForProject } from '@/features/applications/api'
+import { createApplications, listApplicationsForProject } from '@/features/applications/api'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -114,41 +113,41 @@ function HiringProjectDetailPage() {
   )
 }
 
+const MAX_BULK_FILES = 20
+
 function UploadResumeDialog({ projectId }: { projectId: number }) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
-  const [candidateEmail, setCandidateEmail] = useState('')
-  const [candidateFullName, setCandidateFullName] = useState('')
-  const [candidatePhone, setCandidatePhone] = useState('')
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [files, setFiles] = useState<File[]>([])
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    accept: {
+      'application/pdf': ['.pdf'],
+      'application/msword': ['.doc'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+    },
+    maxFiles: MAX_BULK_FILES,
+    onDrop: (accepted) => setFiles((prev) => [...prev, ...accepted].slice(0, MAX_BULK_FILES)),
+  })
 
   const mutation = useMutation({
     mutationFn: () => {
-      const resume = fileInputRef.current?.files?.[0]
-      if (!resume) throw new Error('Resume file is required')
-      return createApplication(projectId, {
-        candidateEmail,
-        candidateFullName,
-        candidatePhone: candidatePhone || undefined,
-        resume,
-      })
+      if (files.length === 0) throw new Error('At least one resume file is required')
+      return createApplications(projectId, files)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['hiring-projects', projectId, 'applications'] })
       setOpen(false)
-      setCandidateEmail('')
-      setCandidateFullName('')
-      setCandidatePhone('')
-      if (fileInputRef.current) fileInputRef.current.value = ''
+      setFiles([])
     },
   })
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button>Upload candidate</Button>} />
+      <DialogTrigger render={<Button>Upload resumes</Button>} />
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Upload candidate resume</DialogTitle>
+          <DialogTitle>Upload candidate resumes</DialogTitle>
         </DialogHeader>
         <form
           className="flex flex-col gap-4"
@@ -157,42 +156,38 @@ function UploadResumeDialog({ projectId }: { projectId: number }) {
             mutation.mutate()
           }}
         >
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="candidate-name">Full name</Label>
-            <Input
-              id="candidate-name"
-              required
-              value={candidateFullName}
-              onChange={(e) => setCandidateFullName(e.target.value)}
-            />
+          <div
+            {...getRootProps()}
+            className={`flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-8 text-center text-sm ${
+              isDragActive ? 'border-primary bg-muted' : 'border-muted-foreground/25'
+            }`}
+          >
+            <input {...getInputProps()} />
+            <p className="text-muted-foreground">
+              Drag and drop resumes here, or click to browse (PDF/DOC/DOCX, up to {MAX_BULK_FILES})
+            </p>
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="candidate-email">Email</Label>
-            <Input
-              id="candidate-email"
-              type="email"
-              required
-              value={candidateEmail}
-              onChange={(e) => setCandidateEmail(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="candidate-phone">Phone (optional)</Label>
-            <Input
-              id="candidate-phone"
-              value={candidatePhone}
-              onChange={(e) => setCandidatePhone(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="resume">Resume</Label>
-            <Input id="resume" type="file" required ref={fileInputRef} />
-          </div>
+          {files.length > 0 && (
+            <ul className="flex flex-col gap-1 text-sm">
+              {files.map((file, index) => (
+                <li key={`${file.name}-${index}`} className="flex items-center justify-between">
+                  <span>{file.name}</span>
+                  <button
+                    type="button"
+                    className="text-muted-foreground underline"
+                    onClick={() => setFiles((prev) => prev.filter((_, i) => i !== index))}
+                  >
+                    Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
           {mutation.isError && (
             <p className="text-sm text-destructive">{(mutation.error as Error).message}</p>
           )}
-          <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Uploading…' : 'Upload'}
+          <Button type="submit" disabled={mutation.isPending || files.length === 0}>
+            {mutation.isPending ? 'Uploading…' : `Upload ${files.length || ''}`.trim()}
           </Button>
         </form>
       </DialogContent>
