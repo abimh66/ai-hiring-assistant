@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from app.agents.candidate_matching import candidate_matching_agent
 from app.agents.resume_analysis import resume_analysis_agent
 from app.agents.shortlisting import shortlist_agent
+from app.api.candidate_matching import router as candidate_matching_router
 from app.api.resume_analysis import router as resume_analysis_router
 from app.api.resume_embed import router as resume_embed_router
 from app.core.config import get_settings
@@ -30,6 +31,7 @@ registry = Registry(
 base_app = FastAPI()
 base_app.include_router(resume_analysis_router)
 base_app.include_router(resume_embed_router)
+base_app.include_router(candidate_matching_router)
 
 agent_os = AgentOS(
     id="rag-backend",
