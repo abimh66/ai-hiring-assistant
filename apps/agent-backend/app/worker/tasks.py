@@ -6,6 +6,7 @@ from app.db.session import engine
 from app.modules.applications.models import Application
 from app.modules.candidates.models import Candidate
 from app.modules.candidates.service import get_or_create_candidate
+from app.modules.hiring_projects.models import HiringProject  # noqa: F401
 from app.modules.resume_analysis.service import (
     get_analysis_by_application_id,
     get_or_create_pending_analysis,
