@@ -39,6 +39,11 @@ function HiringProjectDetailPage() {
   const { data: applications, isLoading } = useQuery({
     queryKey: ['hiring-projects', id, 'applications'],
     queryFn: () => listApplicationsForProject(id),
+    refetchInterval: (query) => {
+      const apps = query.state.data
+      const hasPending = apps?.some((application) => application.candidate_id == null)
+      return hasPending ? 3000 : false
+    },
   })
 
   return (
@@ -90,13 +95,19 @@ function HiringProjectDetailPage() {
                 {applications.map((application) => (
                   <TableRow key={application.id}>
                     <TableCell>
-                      <Link
-                        className="underline"
-                        to="/candidates/$candidateId"
-                        params={{ candidateId: String(application.candidate_id) }}
-                      >
-                        Application #{application.id}
-                      </Link>
+                      {application.candidate_id == null ? (
+                        <span className="text-muted-foreground">
+                          {application.resume_original_filename} (processing…)
+                        </span>
+                      ) : (
+                        <Link
+                          className="underline"
+                          to="/candidates/$candidateId"
+                          params={{ candidateId: String(application.candidate_id) }}
+                        >
+                          {application.resume_original_filename}
+                        </Link>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary">{application.status}</Badge>
