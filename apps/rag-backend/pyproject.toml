@@ -1,0 +1,21 @@
+[project]
+name = "rag-backend"
+version = "0.1.0"
+description = "Agno-based RAG service for resume intelligence"
+requires-python = ">=3.12"
+dependencies = [
+    "agno>=2.4.0",
+    "chromadb>=1.4.1",
+    "fastapi>=0.139.0",
+    "fastembed>=0.7.0",
+    "mistralai>=1.11.1",
+    "openai>=1.60.0",
+    "pydantic-settings>=2.14.2",
+    "python-dotenv>=1.1.1",
+    "pymupdf>=1.26.5",
+    "python-docx>=1.2.0",
+    "python-multipart>=0.0.32",
+    "sqlalchemy>=2.0.44",
+    "psycopg[binary]>=3.3.4",
+    "uvicorn[standard]>=0.51.0",
+]
