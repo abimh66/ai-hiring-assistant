@@ -2,9 +2,9 @@ from fastapi import HTTPException, UploadFile, status
 from sqlmodel import Session, select
 
 from app.modules.applications.models import Application
-from app.modules.applications.schemas import ApplicationCreate, ApplicationUpdate
-from app.modules.candidates.service import get_or_create_candidate
+from app.modules.applications.schemas import ApplicationRead, ApplicationUpdate, ApplicationUploadResult
 from app.modules.storage.client import upload_file
+from app.worker.tasks import analyze_resume
 
 
 def list_applications_for_project(session: Session, hiring_project_id: int) -> list[Application]:
@@ -28,28 +28,49 @@ def get_application_or_404(session: Session, application_id: int) -> Application
     return application
 
 
-async def create_application_with_resume(
+MAX_BULK_UPLOAD_FILES = 20
+
+
+async def create_applications_with_resumes(
     session: Session,
     hiring_project_id: int,
-    payload: ApplicationCreate,
-    resume: UploadFile,
-) -> Application:
-    candidate = get_or_create_candidate(
-        session, payload.candidate_email, payload.candidate_full_name, payload.candidate_phone
-    )
+    resumes: list[UploadFile],
+) -> list[ApplicationUploadResult]:
+    if len(resumes) > MAX_BULK_UPLOAD_FILES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot upload more than {MAX_BULK_UPLOAD_FILES} resumes at once",
+        )
 
-    resume_bytes = await resume.read()
-    resume_key = upload_file(resume_bytes, resume.filename or "resume", resume.content_type)
+    results: list[ApplicationUploadResult] = []
+    for resume in resumes:
+        filename = resume.filename or "resume"
+        try:
+            resume_bytes = await resume.read()
+            resume_key = upload_file(resume_bytes, filename, resume.content_type)
 
-    application = Application(
-        candidate_id=candidate.id,
-        hiring_project_id=hiring_project_id,
-        resume_file_key=resume_key,
-    )
-    session.add(application)
-    session.commit()
-    session.refresh(application)
-    return application
+            application = Application(
+                candidate_id=None,
+                hiring_project_id=hiring_project_id,
+                resume_file_key=resume_key,
+                resume_original_filename=filename,
+            )
+            session.add(application)
+            session.commit()
+            session.refresh(application)
+
+            analyze_resume.delay(application.id)
+
+            results.append(
+                ApplicationUploadResult(
+                    filename=filename, application=ApplicationRead.model_validate(application)
+                )
+            )
+        except Exception as exc:
+            session.rollback()
+            results.append(ApplicationUploadResult(filename=filename, error=str(exc)))
+
+    return results
 
 
 def update_application_status(
