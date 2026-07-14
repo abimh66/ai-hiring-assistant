@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.modules.applications.models import ApplicationStatus
 
@@ -10,6 +10,8 @@ class ApplicationUpdate(BaseModel):
 
 
 class ApplicationRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     candidate_id: int | None
     hiring_project_id: int
