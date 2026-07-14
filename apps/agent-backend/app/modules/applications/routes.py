@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlmodel import Session
 
 from app.core.deps import get_current_user
 from app.db.session import get_session
-from app.modules.applications.schemas import ApplicationCreate, ApplicationRead, ApplicationUpdate
+from app.modules.applications.schemas import ApplicationRead, ApplicationUpdate, ApplicationUploadResult
 from app.modules.applications.service import (
-    create_application_with_resume,
+    create_applications_with_resumes,
     get_application_or_404,
     list_applications_for_project,
     update_application_status,
@@ -33,22 +33,14 @@ def list_project_applications(hiring_project_id: int, session: Session = Depends
     return list_applications_for_project(session, hiring_project_id)
 
 
-@project_applications_router.post("", response_model=ApplicationRead, status_code=201)
-async def create_application(
+@project_applications_router.post("", response_model=list[ApplicationUploadResult], status_code=201)
+async def create_applications(
     hiring_project_id: int,
-    candidate_email: str = Form(...),
-    candidate_full_name: str = Form(...),
-    candidate_phone: str | None = Form(None),
-    resume: UploadFile = File(...),
+    resumes: list[UploadFile] = File(...),
     session: Session = Depends(get_session),
 ):
     get_hiring_project_or_404(session, hiring_project_id)
-    payload = ApplicationCreate(
-        candidate_email=candidate_email,
-        candidate_full_name=candidate_full_name,
-        candidate_phone=candidate_phone,
-    )
-    return await create_application_with_resume(session, hiring_project_id, payload, resume)
+    return await create_applications_with_resumes(session, hiring_project_id, resumes)
 
 
 @applications_router.get("/{application_id}", response_model=ApplicationRead)
