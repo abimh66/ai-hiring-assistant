@@ -41,6 +41,10 @@ htmlcov/
 .uv/
 uv.lock
 
+# Local Agno/Chroma data
+tmp/
+apps/*/tmp/
+
 # --- Node / React (Vite) ---
 node_modules/
 dist-ssr/
