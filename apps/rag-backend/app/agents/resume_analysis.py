@@ -40,7 +40,12 @@ resume_analysis_agent = Agent(
     id="resume-analysis-agent",
     name="Resume Analysis Agent",
     model=OpenRouter(
-        id=settings.openrouter_model_id, api_key=settings.openrouter_api_key
+        id=settings.openrouter_model_id,
+        api_key=settings.openrouter_api_key,
+        # OpenRouter's default max_tokens (1024) is too low for a reasoning model like
+        # gpt-5-mini: reasoning tokens are counted against this same budget, so longer
+        # resumes were getting cut off mid-JSON before the structured output finished.
+        max_tokens=8192,
     ),
     output_schema=ResumeProfile,
     markdown=True,
