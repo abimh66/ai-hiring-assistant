@@ -1,25 +1,25 @@
 import { apiGet, apiPatch, apiPostForm } from '@/lib/api-client'
 import type {
   Application,
-  ApplicationCreateInput,
   ApplicationUpdateInput,
+  ApplicationUploadResult,
 } from '@/features/applications/types'
 
 export function listApplicationsForProject(hiringProjectId: number): Promise<Application[]> {
   return apiGet<Application[]>(`/hiring-projects/${hiringProjectId}/applications`)
 }
 
-export function createApplication(
+export function createApplications(
   hiringProjectId: number,
-  input: ApplicationCreateInput,
-): Promise<Application> {
+  files: File[],
+): Promise<ApplicationUploadResult[]> {
   const formData = new FormData()
-  formData.set('candidate_email', input.candidateEmail)
-  formData.set('candidate_full_name', input.candidateFullName)
-  if (input.candidatePhone) formData.set('candidate_phone', input.candidatePhone)
-  formData.set('resume', input.resume)
+  files.forEach((file) => formData.append('resumes', file))
 
-  return apiPostForm<Application>(`/hiring-projects/${hiringProjectId}/applications`, formData)
+  return apiPostForm<ApplicationUploadResult[]>(
+    `/hiring-projects/${hiringProjectId}/applications`,
+    formData,
+  )
 }
 
 export function getApplication(id: number): Promise<Application> {
