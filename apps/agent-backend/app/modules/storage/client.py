@@ -35,6 +35,10 @@ def upload_file(file_bytes: bytes, filename: str, content_type: str | None) -> s
     return key
 
 
+def download_file(key: str) -> bytes:
+    return get_s3_resource().Bucket(settings.s3_bucket).Object(key).get()["Body"].read()
+
+
 def get_file_url(key: str) -> str:
     client = get_s3_resource().meta.client
     return client.generate_presigned_url(

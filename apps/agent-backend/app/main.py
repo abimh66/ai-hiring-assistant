@@ -8,6 +8,7 @@ from app.modules.applications.routes import applications_router, project_applica
 from app.modules.auth.routes import router as auth_router
 from app.modules.candidates.routes import router as candidates_router
 from app.modules.hiring_projects.routes import router as hiring_projects_router
+from app.modules.resume_analysis.routes import router as resume_analysis_router
 from app.modules.storage.client import ensure_bucket
 from app.modules.users.routes import router as users_router
 
@@ -32,6 +33,7 @@ app.include_router(auth_router)
 app.include_router(hiring_projects_router)
 app.include_router(project_applications_router)
 app.include_router(applications_router)
+app.include_router(resume_analysis_router)
 app.include_router(candidates_router)
 app.include_router(users_router)
 

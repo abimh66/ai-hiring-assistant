@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     s3_bucket: str = "hiring-assistant"
     s3_region: str = "us-east-1"
 
+    rag_backend_url: str = "http://localhost:7777"
+
 
 @lru_cache
 def get_settings() -> Settings:
