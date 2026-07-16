@@ -25,6 +25,9 @@ class Settings(BaseSettings):
 
     ocr_min_chars_per_page: int = 100
 
+    agent_backend_url: str = "http://localhost:8000"
+    max_specialist_spawns: int = 3
+
 
 @lru_cache
 def get_settings() -> Settings:
