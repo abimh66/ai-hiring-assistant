@@ -7,11 +7,13 @@ from agno.registry import Registry
 from fastapi import FastAPI
 
 from app.agents.candidate_matching import candidate_matching_agent
+from app.agents.report import report_agent
 from app.agents.resume_analysis import resume_analysis_agent
 from app.agents.shortlisting import shortlist_agent
 from app.api.candidate_matching import router as candidate_matching_router
 from app.api.chat import router as chat_router
 from app.api.extract_text import router as extract_text_router
+from app.api.report import router as report_router
 from app.api.resume_analysis import router as resume_analysis_router
 from app.api.resume_embed import router as resume_embed_router
 from app.api.shortlisting import router as shortlisting_router
@@ -27,6 +29,7 @@ registry = Registry(
         cast(Model, resume_analysis_agent.model),
         cast(Model, candidate_matching_agent.model),
         cast(Model, shortlist_agent.model),
+        cast(Model, report_agent.model),
     ],
     dbs=[db],
 )
@@ -38,11 +41,12 @@ base_app.include_router(candidate_matching_router)
 base_app.include_router(shortlisting_router)
 base_app.include_router(chat_router)
 base_app.include_router(extract_text_router)
+base_app.include_router(report_router)
 
 agent_os = AgentOS(
     id="rag-backend",
     description="Resume intelligence agents for the AI Hiring Assistant",
-    agents=[resume_analysis_agent, candidate_matching_agent, shortlist_agent],
+    agents=[resume_analysis_agent, candidate_matching_agent, shortlist_agent, report_agent],
     registry=registry,
     db=db,
     base_app=base_app,
