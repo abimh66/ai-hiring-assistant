@@ -14,6 +14,11 @@ from app.modules.candidate_matching.service import (
 from app.modules.candidates.models import Candidate
 from app.modules.candidates.service import get_or_create_candidate
 from app.modules.hiring_projects.models import HiringProject
+from app.modules.reports.service import (
+    get_or_create_pending_report,
+    mark_report_completed,
+    mark_report_failed,
+)
 from app.modules.resume_analysis.models import ResumeAnalysisStatus
 from app.modules.resume_analysis.service import (
     get_analysis_by_application_id,
@@ -25,6 +30,7 @@ from app.modules.resume_analysis.service import (
 )
 from app.modules.shortlisting.service import (
     get_or_create_pending_shortlist,
+    get_shortlist_by_project_id,
     mark_shortlist_completed,
     mark_shortlist_failed,
 )
@@ -246,3 +252,96 @@ def generate_shortlist(hiring_project_id: int) -> None:
         ]
 
         mark_shortlist_completed(session, shortlist, recommendations, result["overall_summary"])
+
+
+def _ensure_interview_notes_text(session: Session, application: Application) -> str | None:
+    if application.interview_notes_text:
+        return application.interview_notes_text
+    if not application.interview_notes_file_key:
+        return None
+    try:
+        notes_bytes = download_file(application.interview_notes_file_key)
+        response = httpx.post(
+            f"{settings.rag_backend_url}/extract-text",
+            files={"file": ("interview_notes", notes_bytes)},
+            timeout=120,
+        )
+        response.raise_for_status()
+        text = response.json()["text"]
+    except Exception:
+        return None
+    # Imported lazily: app.modules.applications.service imports this module at top level.
+    from app.modules.applications.service import set_interview_notes_text
+
+    set_interview_notes_text(session, application, text)
+    return text
+
+
+@celery_app.task(name="generate_report")
+def generate_report(hiring_project_id: int, user_id: int) -> None:
+    with Session(engine) as session:
+        report = get_or_create_pending_report(session, hiring_project_id)
+
+        project = session.get(HiringProject, hiring_project_id)
+        if project is None:
+            mark_report_failed(session, report, "Hiring project not found")
+            return
+
+        shortlist = get_shortlist_by_project_id(session, hiring_project_id)
+        if shortlist is None or not shortlist.recommendations:
+            mark_report_failed(session, report, "No shortlist available for this project")
+            return
+
+        # shortlist.recommendations entries carry application_id, rank, recommendation_reasoning, risks
+        entries_by_app = {e["application_id"]: e for e in shortlist.recommendations}
+
+        candidates = []
+        for application_id, entry in entries_by_app.items():
+            application = session.get(Application, application_id)
+            if application is None:
+                continue
+            candidate = (
+                session.get(Candidate, application.candidate_id)
+                if application.candidate_id
+                else None
+            )
+            match = get_match_by_application_id(session, application_id)
+            analysis = get_analysis_by_application_id(session, application_id)
+            notes_text = _ensure_interview_notes_text(session, application)
+
+            candidates.append(
+                {
+                    "name": candidate.full_name if candidate else f"Application {application_id}",
+                    "match_score": match.match_score if match else None,
+                    "match_strengths": (match.strengths or []) if match else [],
+                    "match_weaknesses": (match.weaknesses or []) if match else [],
+                    "missing_skills": (match.missing_skills or []) if match else [],
+                    "shortlist_rank": entry.get("rank"),
+                    "shortlist_reasoning": entry.get("recommendation_reasoning"),
+                    "shortlist_risks": entry.get("risks", []),
+                    "resume_summary": analysis.summary if analysis else None,
+                    "skills": (analysis.skills or []) if analysis else [],
+                    "experience": (analysis.experience or []) if analysis else [],
+                    "interview_notes_text": notes_text,
+                }
+            )
+
+        candidates.sort(key=lambda c: c["shortlist_rank"] or 999)
+
+        try:
+            response = httpx.post(
+                f"{settings.rag_backend_url}/report",
+                json={
+                    "project_title": project.title,
+                    "job_description": project.job_description,
+                    "candidates": candidates,
+                },
+                timeout=180,
+            )
+            response.raise_for_status()
+            content = response.json()["content"]
+        except Exception as exc:
+            mark_report_failed(session, report, str(exc))
+            return
+
+        mark_report_completed(session, report, content, user_id)
