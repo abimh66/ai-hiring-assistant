@@ -6,9 +6,14 @@ from app.db.session import get_session
 from app.modules.applications.schemas import ApplicationRead
 from app.modules.applications.service import list_applications_for_candidate
 from app.modules.candidates.schemas import CandidateRead
-from app.modules.candidates.service import get_candidate_or_404
+from app.modules.candidates.service import get_candidate_or_404, list_candidates
 
 router = APIRouter(prefix="/candidates", tags=["candidates"], dependencies=[Depends(get_current_user)])
+
+
+@router.get("", response_model=list[CandidateRead])
+def get_candidates(session: Session = Depends(get_session)):
+    return list_candidates(session)
 
 
 @router.get("/{candidate_id}", response_model=CandidateRead)

@@ -4,6 +4,10 @@ from sqlmodel import Session, select
 from app.modules.candidates.models import Candidate
 
 
+def list_candidates(session: Session) -> list[Candidate]:
+    return list(session.exec(select(Candidate).order_by(Candidate.created_at.desc())).all())
+
+
 def get_candidate_or_404(session: Session, candidate_id: int) -> Candidate:
     candidate = session.get(Candidate, candidate_id)
     if candidate is None:
