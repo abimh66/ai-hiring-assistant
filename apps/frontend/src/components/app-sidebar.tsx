@@ -1,4 +1,4 @@
-import { Briefcase, Contact, LogOut, Users } from 'lucide-react'
+import { Briefcase, Contact, LogOut, Sparkles, Users } from 'lucide-react'
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import { clearTokens } from '@/lib/auth'
 import {
@@ -17,6 +17,7 @@ import {
 const NAV_ITEMS = [
   { to: '/hiring-projects', label: 'Hiring Projects', icon: Briefcase },
   { to: '/candidates', label: 'Candidates', icon: Contact },
+  { to: '/chat', label: 'Assistant', icon: Sparkles },
   { to: '/users', label: 'Team', icon: Users },
 ] as const
 
