@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useReactToPrint } from 'react-to-print'
 
 import { getReport, saveReportVersion, triggerReport } from '@/features/reports/api'
 import { ReportDocument } from '@/features/reports/ReportDocument'
@@ -12,6 +13,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 export function ReportCard({ projectId }: { projectId: number }) {
   const queryClient = useQueryClient()
   const [editing, setEditing] = useState(false)
+  const printRef = useRef<HTMLDivElement>(null)
+  const handlePrint = useReactToPrint({
+    contentRef: printRef,
+    documentTitle: `hiring-report-project-${projectId}`,
+  })
 
   const { data: report, error } = useQuery({
     queryKey: ['hiring-projects', projectId, 'report'],
@@ -59,6 +65,11 @@ export function ReportCard({ projectId }: { projectId: number }) {
         <CardTitle>Hiring report</CardTitle>
         <div className="flex gap-2">
           {isCompleted && !editing && (
+            <Button variant="outline" onClick={handlePrint}>
+              Export PDF
+            </Button>
+          )}
+          {isCompleted && !editing && (
             <Button variant="outline" onClick={() => setEditing(true)}>
               Edit
             </Button>
@@ -85,7 +96,9 @@ export function ReportCard({ projectId }: { projectId: number }) {
         )}
         {isCompleted && report?.content && !editing && (
           <>
-            <ReportDocument content={report.content} />
+            <div ref={printRef} className="report-print-area">
+              <ReportDocument content={report.content} />
+            </div>
             <VersionHistory projectId={projectId} />
           </>
         )}
