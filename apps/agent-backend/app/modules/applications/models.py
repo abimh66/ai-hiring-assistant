@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from enum import Enum
 
+from sqlalchemy import Column, Text
 from sqlmodel import Field, SQLModel
 
 
@@ -20,5 +21,6 @@ class Application(SQLModel, table=True):
     resume_file_key: str
     resume_original_filename: str
     interview_notes_file_key: str | None = None
+    interview_notes_text: str | None = Field(default=None, sa_column=Column(Text))
     status: ApplicationStatus = Field(default=ApplicationStatus.new)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
