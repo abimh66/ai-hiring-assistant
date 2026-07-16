@@ -1,22 +1,68 @@
 from fastapi import APIRouter, Depends, Response, status
+from fastapi.responses import StreamingResponse
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlmodel import Session
 
-from app.core.deps import get_current_user
+from app.core.deps import bearer_scheme, get_current_user
 from app.db.session import get_session
 from app.modules.auth.models import User
+from app.modules.chat.models import ChatRole
 from app.modules.chat.schemas import (
     ChatConversationListItem,
     ChatConversationRead,
     ChatMessageRead,
+    ChatSendRequest,
 )
 from app.modules.chat.service import (
+    append_message,
+    create_conversation,
     delete_conversation,
     get_conversation_or_404,
+    history_for_agent,
     list_conversations,
     list_messages,
+    validate_project_scope,
 )
+from app.modules.chat.stream import proxy_chat_stream
+from app.modules.chat_context.service import owned_project_ids
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+@router.post("")
+def send_chat_message(
+    payload: ChatSendRequest,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+):
+    validate_project_scope(session, current_user.id, payload.hiring_project_id)
+
+    if payload.conversation_id is None:
+        conversation = create_conversation(
+            session, current_user.id, payload.hiring_project_id, payload.message
+        )
+    else:
+        conversation = get_conversation_or_404(session, current_user.id, payload.conversation_id)
+
+    history = history_for_agent(session, conversation.id)
+    append_message(session, conversation.id, ChatRole.user, payload.message)
+
+    if payload.hiring_project_id is not None:
+        allowed_ids = [payload.hiring_project_id]
+    else:
+        allowed_ids = owned_project_ids(session, current_user.id)
+
+    stream = proxy_chat_stream(
+        session=session,
+        conversation_id=conversation.id,
+        jwt=credentials.credentials,
+        message=payload.message,
+        hiring_project_id=payload.hiring_project_id,
+        allowed_project_ids=allowed_ids,
+        history=history,
+    )
+    return StreamingResponse(stream, media_type="text/event-stream")
 
 
 @router.get("/conversations", response_model=list[ChatConversationListItem])
