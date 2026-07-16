@@ -3,6 +3,7 @@ import type {
   Application,
   ApplicationUpdateInput,
   ApplicationUploadResult,
+  CandidateMatch,
   ResumeAnalysis,
 } from '@/features/applications/types'
 
@@ -51,4 +52,12 @@ export function getResumeAnalysis(id: number): Promise<ResumeAnalysis> {
 
 export function retryResumeAnalysis(id: number): Promise<ResumeAnalysis> {
   return apiPost<ResumeAnalysis>(`/applications/${id}/resume-analysis/retry`)
+}
+
+export function getMatch(id: number): Promise<CandidateMatch> {
+  return apiGet<CandidateMatch>(`/applications/${id}/match`)
+}
+
+export function retryMatch(id: number): Promise<CandidateMatch> {
+  return apiPost<CandidateMatch>(`/applications/${id}/match/retry`)
 }

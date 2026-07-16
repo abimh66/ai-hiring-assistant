@@ -39,6 +39,20 @@ export interface ResumeEducationEntry {
   end_date: string | null
 }
 
+export interface CandidateMatch {
+  id: number
+  application_id: number
+  status: ResumeAnalysisStatus
+  match_score: number | null
+  strengths: string[] | null
+  weaknesses: string[] | null
+  missing_skills: string[] | null
+  reasoning: string | null
+  error_message: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface ResumeAnalysis {
   id: number
   application_id: number

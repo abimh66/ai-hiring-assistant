@@ -3,6 +3,7 @@ import type {
   HiringProject,
   HiringProjectCreateInput,
   HiringProjectUpdateInput,
+  ShortlistRecommendation,
 } from '@/features/hiring-projects/types'
 
 export function listHiringProjects(): Promise<HiringProject[]> {
@@ -26,4 +27,12 @@ export function updateHiringProject(
 
 export function deleteHiringProject(id: number): Promise<void> {
   return apiDelete<void>(`/hiring-projects/${id}`)
+}
+
+export function getShortlist(id: number): Promise<ShortlistRecommendation> {
+  return apiGet<ShortlistRecommendation>(`/hiring-projects/${id}/shortlist`)
+}
+
+export function triggerShortlist(id: number): Promise<ShortlistRecommendation> {
+  return apiPost<ShortlistRecommendation>(`/hiring-projects/${id}/shortlist`)
 }
