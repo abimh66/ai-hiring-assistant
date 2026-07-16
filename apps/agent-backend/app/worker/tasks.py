@@ -4,6 +4,7 @@ from sqlmodel import Session, select
 from app.core.config import get_settings
 from app.db.session import engine
 from app.modules.applications.models import Application
+from app.modules.auth.models import User  # noqa: F401  (register users table for report_versions FK)
 from app.modules.candidate_matching.models import CandidateMatchStatus
 from app.modules.candidate_matching.service import (
     get_match_by_application_id,

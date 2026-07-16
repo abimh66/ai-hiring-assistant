@@ -11,6 +11,7 @@ from app.modules.candidates.routes import router as candidates_router
 from app.modules.chat.routes import router as chat_router
 from app.modules.chat_context.routes import router as chat_context_router
 from app.modules.hiring_projects.routes import router as hiring_projects_router
+from app.modules.reports.routes import router as reports_router
 from app.modules.resume_analysis.routes import router as resume_analysis_router
 from app.modules.shortlisting.routes import router as shortlisting_router
 from app.modules.storage.client import ensure_bucket
@@ -40,6 +41,7 @@ app.include_router(applications_router)
 app.include_router(resume_analysis_router)
 app.include_router(candidate_matching_router)
 app.include_router(shortlisting_router)
+app.include_router(reports_router)
 app.include_router(candidates_router)
 app.include_router(chat_context_router)
 app.include_router(chat_router)
