@@ -13,6 +13,7 @@ from app.modules.candidate_matching.models import CandidateMatch  # noqa: F401
 from app.modules.candidates.models import Candidate  # noqa: F401
 from app.modules.chat.models import ChatConversation, ChatMessage  # noqa: F401
 from app.modules.hiring_projects.models import HiringProject  # noqa: F401
+from app.modules.reports.models import HiringReport, ReportVersion  # noqa: F401
 from app.modules.resume_analysis.models import ResumeAnalysis  # noqa: F401
 from app.modules.shortlisting.models import ShortlistRecommendation  # noqa: F401
 
