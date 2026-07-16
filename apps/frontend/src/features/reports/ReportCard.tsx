@@ -1,13 +1,17 @@
+import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { getReport, triggerReport } from '@/features/reports/api'
+import { getReport, saveReportVersion, triggerReport } from '@/features/reports/api'
 import { ReportDocument } from '@/features/reports/ReportDocument'
+import { ReportEditor } from '@/features/reports/ReportEditor'
+import { VersionHistory } from '@/features/reports/VersionHistory'
 import { ApiError } from '@/lib/api-client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function ReportCard({ projectId }: { projectId: number }) {
   const queryClient = useQueryClient()
+  const [editing, setEditing] = useState(false)
 
   const { data: report, error } = useQuery({
     queryKey: ['hiring-projects', projectId, 'report'],
@@ -16,10 +20,23 @@ export function ReportCard({ projectId }: { projectId: number }) {
     refetchInterval: (query) => (query.state.data?.status === 'pending' ? 2500 : false),
   })
 
+  const invalidateReport = () => {
+    queryClient.invalidateQueries({ queryKey: ['hiring-projects', projectId, 'report'] })
+    queryClient.invalidateQueries({
+      queryKey: ['hiring-projects', projectId, 'report', 'versions'],
+    })
+  }
+
   const triggerMutation = useMutation({
     mutationFn: () => triggerReport(projectId),
+    onSuccess: invalidateReport,
+  })
+
+  const saveMutation = useMutation({
+    mutationFn: (content: string) => saveReportVersion(projectId, content),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hiring-projects', projectId, 'report'] })
+      setEditing(false)
+      invalidateReport()
     },
   })
 
@@ -28,16 +45,28 @@ export function ReportCard({ projectId }: { projectId: number }) {
   const isFailed = report?.status === 'failed'
   const isCompleted = report?.status === 'completed'
 
+  const handleRegenerate = () => {
+    if (editing && !window.confirm('Discard your unsaved edits and regenerate the report?')) {
+      return
+    }
+    setEditing(false)
+    triggerMutation.mutate()
+  }
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Hiring report</CardTitle>
-        <Button
-          onClick={() => triggerMutation.mutate()}
-          disabled={isPending}
-        >
-          {isPending ? 'Generating…' : isCompleted ? 'Regenerate' : 'Generate report'}
-        </Button>
+        <div className="flex gap-2">
+          {isCompleted && !editing && (
+            <Button variant="outline" onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+          )}
+          <Button onClick={handleRegenerate} disabled={isPending}>
+            {isPending ? 'Generating…' : isCompleted ? 'Regenerate' : 'Generate report'}
+          </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {(is404 || (!report && !isPending)) && !triggerMutation.isPending && (
@@ -54,7 +83,20 @@ export function ReportCard({ projectId }: { projectId: number }) {
             )}
           </div>
         )}
-        {isCompleted && report?.content && <ReportDocument content={report.content} />}
+        {isCompleted && report?.content && !editing && (
+          <>
+            <ReportDocument content={report.content} />
+            <VersionHistory projectId={projectId} />
+          </>
+        )}
+        {isCompleted && report?.content && editing && (
+          <ReportEditor
+            content={report.content}
+            saving={saveMutation.isPending}
+            onSave={(next) => saveMutation.mutate(next)}
+            onCancel={() => setEditing(false)}
+          />
+        )}
       </CardContent>
     </Card>
   )
