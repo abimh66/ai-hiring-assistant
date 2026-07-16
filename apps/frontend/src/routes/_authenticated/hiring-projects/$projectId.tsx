@@ -6,6 +6,7 @@ import { getHiringProject, getShortlist, triggerShortlist } from '@/features/hir
 import type { ShortlistEntry } from '@/features/hiring-projects/types'
 import { createApplications, getMatch, listApplicationsForProject } from '@/features/applications/api'
 import type { Application } from '@/features/applications/types'
+import { ReportCard } from '@/features/reports/ReportCard'
 import { ApiError } from '@/lib/api-client'
 import { cn, scoreTone } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -78,6 +79,8 @@ function HiringProjectDetailPage() {
       )}
 
       <ShortlistCard projectId={id} applications={applications ?? []} />
+
+      <ReportCard projectId={id} />
 
       <Card>
         <CardHeader>
