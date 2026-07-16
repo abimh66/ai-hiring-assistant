@@ -87,6 +87,30 @@ def analyze_resume(application_id: int) -> None:
         match_candidate.delay(application_id)
 
 
+@celery_app.task(name="extract_interview_notes")
+def extract_interview_notes(application_id: int) -> None:
+    with Session(engine) as session:
+        application = session.get(Application, application_id)
+        if application is None or application.interview_notes_file_key is None:
+            return
+        try:
+            notes_bytes = download_file(application.interview_notes_file_key)
+            response = httpx.post(
+                f"{settings.rag_backend_url}/extract-text",
+                files={"file": ("interview_notes", notes_bytes)},
+                timeout=120,
+            )
+            response.raise_for_status()
+            text = response.json()["text"]
+        except Exception:
+            # Non-fatal: leave interview_notes_text null; the report simply omits notes.
+            return
+        # Imported lazily: app.modules.applications.service imports this module at top level.
+        from app.modules.applications.service import set_interview_notes_text
+
+        set_interview_notes_text(session, application, text)
+
+
 @celery_app.task(name="embed_resume")
 def embed_resume(application_id: int) -> None:
     with Session(engine) as session:

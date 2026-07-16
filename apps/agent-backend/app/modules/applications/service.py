@@ -93,4 +93,18 @@ async def upload_interview_notes(
     session.add(application)
     session.commit()
     session.refresh(application)
+
+    from app.worker.tasks import extract_interview_notes
+
+    extract_interview_notes.delay(application.id)
+    return application
+
+
+def set_interview_notes_text(
+    session: Session, application: Application, text: str
+) -> Application:
+    application.interview_notes_text = text
+    session.add(application)
+    session.commit()
+    session.refresh(application)
     return application
