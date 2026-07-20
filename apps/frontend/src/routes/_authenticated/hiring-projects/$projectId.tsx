@@ -7,6 +7,7 @@ import type { ShortlistEntry } from '@/features/hiring-projects/types'
 import { createApplications, getMatch, listApplicationsForProject } from '@/features/applications/api'
 import type { Application } from '@/features/applications/types'
 import { ReportCard } from '@/features/reports/ReportCard'
+import { RichTextContent } from '@/components/rich-text-content'
 import { ApiError } from '@/lib/api-client'
 import { cn, scoreTone } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -71,9 +72,7 @@ function HiringProjectDetailPage() {
             <CardTitle>Job description</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="whitespace-pre-wrap text-sm text-muted-foreground">
-              {project.job_description}
-            </p>
+            <RichTextContent html={project.job_description} className="text-muted-foreground" />
           </CardContent>
         </Card>
       )}
