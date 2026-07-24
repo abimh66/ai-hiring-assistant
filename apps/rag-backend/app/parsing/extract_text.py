@@ -46,6 +46,10 @@ def _extract_docx(file_bytes: bytes) -> tuple[str, str]:
     return text, "python-docx"
 
 
+def _extract_plain_text(file_bytes: bytes) -> tuple[str, str]:
+    return file_bytes.decode("utf-8", errors="replace"), "plain-text"
+
+
 def extract_text(file_bytes: bytes, filename: str) -> tuple[str, str]:
     """Returns (extracted_text, extraction_method)."""
     extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
@@ -53,4 +57,6 @@ def extract_text(file_bytes: bytes, filename: str) -> tuple[str, str]:
         return _extract_pdf(file_bytes)
     if extension == "docx":
         return _extract_docx(file_bytes)
+    if extension in ("txt", "md"):
+        return _extract_plain_text(file_bytes)
     raise ValueError(f"Unsupported resume file type: .{extension}")

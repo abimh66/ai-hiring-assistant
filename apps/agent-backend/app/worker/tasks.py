@@ -1,3 +1,5 @@
+import base64
+
 import httpx
 from sqlmodel import Session, select
 
@@ -35,7 +37,7 @@ from app.modules.shortlisting.service import (
     mark_shortlist_completed,
     mark_shortlist_failed,
 )
-from app.modules.storage.client import download_file
+from app.modules.storage.client import download_file, put_bytes
 from app.worker.celery_app import celery_app
 
 settings = get_settings()
@@ -47,7 +49,18 @@ def ping() -> str:
 
 
 @celery_app.task(name="analyze_resume")
-def analyze_resume(application_id: int) -> None:
+def analyze_resume(
+    application_id: int,
+    resume_b64: str | None = None,
+    content_type: str | None = None,
+) -> None:
+    """Analyze a resume.
+
+    ``resume_b64`` is the base64-encoded resume bytes handed off by the upload
+    endpoint (bulk-upload path): the worker owns the actual object-store write so
+    the request returns immediately. When it's ``None`` (retry path), the bytes
+    are fetched from the store using the application's ``resume_file_key``.
+    """
     with Session(engine) as session:
         analysis = get_or_create_pending_analysis(session, application_id)
 
@@ -56,8 +69,23 @@ def analyze_resume(application_id: int) -> None:
             mark_analysis_failed(session, analysis, "Application not found")
             return
 
+        if resume_b64 is not None:
+            try:
+                resume_bytes = base64.b64decode(resume_b64)
+                put_bytes(application.resume_file_key, resume_bytes, content_type)
+            except Exception as exc:
+                mark_analysis_failed(
+                    session, analysis, f"Failed to store resume: {exc}"
+                )
+                return
+        else:
+            try:
+                resume_bytes = download_file(application.resume_file_key)
+            except Exception as exc:
+                mark_analysis_failed(session, analysis, str(exc))
+                return
+
         try:
-            resume_bytes = download_file(application.resume_file_key)
             response = httpx.post(
                 f"{settings.rag_backend_url}/resume-analysis",
                 files={"resume": (application.resume_original_filename, resume_bytes)},
@@ -87,7 +115,11 @@ def analyze_resume(application_id: int) -> None:
         session.commit()
 
         analysis = mark_analysis_completed(
-            session, analysis, result, result["extraction_method"], result["extracted_text"]
+            session,
+            analysis,
+            result,
+            result["extraction_method"],
+            result["extracted_text"],
         )
 
         _embed(session, application, candidate, analysis)
@@ -133,7 +165,9 @@ def embed_resume(application_id: int) -> None:
         _embed(session, application, candidate, analysis)
 
 
-def _embed(session: Session, application: Application, candidate: Candidate, analysis) -> None:
+def _embed(
+    session: Session, application: Application, candidate: Candidate, analysis
+) -> None:
     try:
         response = httpx.post(
             f"{settings.rag_backend_url}/resume-embed",
@@ -170,7 +204,9 @@ def match_candidate(application_id: int) -> None:
 
         analysis = get_analysis_by_application_id(session, application_id)
         if analysis is None or analysis.status != ResumeAnalysisStatus.completed:
-            mark_match_failed(session, match, "Resume analysis is not completed for this application")
+            mark_match_failed(
+                session, match, "Resume analysis is not completed for this application"
+            )
             return
 
         project = session.get(HiringProject, application.hiring_project_id)
@@ -214,7 +250,9 @@ def generate_shortlist(hiring_project_id: int) -> None:
             return
 
         applications = session.exec(
-            select(Application).where(Application.hiring_project_id == hiring_project_id)
+            select(Application).where(
+                Application.hiring_project_id == hiring_project_id
+            )
         ).all()
 
         candidates = []
@@ -234,7 +272,10 @@ def generate_shortlist(hiring_project_id: int) -> None:
         try:
             response = httpx.post(
                 f"{settings.rag_backend_url}/shortlist",
-                json={"job_description": project.job_description, "candidates": candidates},
+                json={
+                    "job_description": project.job_description,
+                    "candidates": candidates,
+                },
                 timeout=120,
             )
             response.raise_for_status()
@@ -246,16 +287,27 @@ def generate_shortlist(hiring_project_id: int) -> None:
         # The agent's ShortlistEntry doesn't carry match_score (see the comment in
         # agents/shortlisting.py) — re-attach it here from the `candidates` list built above,
         # which is the authoritative source, before persisting.
-        match_score_by_application_id = {c["application_id"]: c["match_score"] for c in candidates}
+        match_score_by_application_id = {
+            c["application_id"]: c["match_score"] for c in candidates
+        }
         recommendations = [
-            {**entry, "match_score": match_score_by_application_id.get(entry["application_id"])}
+            {
+                **entry,
+                "match_score": match_score_by_application_id.get(
+                    entry["application_id"]
+                ),
+            }
             for entry in result["recommendations"]
         ]
 
-        mark_shortlist_completed(session, shortlist, recommendations, result["overall_summary"])
+        mark_shortlist_completed(
+            session, shortlist, recommendations, result["overall_summary"]
+        )
 
 
-def _ensure_interview_notes_text(session: Session, application: Application) -> str | None:
+def _ensure_interview_notes_text(
+    session: Session, application: Application
+) -> str | None:
     if application.interview_notes_text:
         return application.interview_notes_text
     if not application.interview_notes_file_key:
@@ -290,7 +342,9 @@ def generate_report(hiring_project_id: int, user_id: int) -> None:
 
         shortlist = get_shortlist_by_project_id(session, hiring_project_id)
         if shortlist is None or not shortlist.recommendations:
-            mark_report_failed(session, report, "No shortlist available for this project")
+            mark_report_failed(
+                session, report, "No shortlist available for this project"
+            )
             return
 
         # shortlist.recommendations entries carry application_id, rank, recommendation_reasoning, risks
@@ -312,7 +366,9 @@ def generate_report(hiring_project_id: int, user_id: int) -> None:
 
             candidates.append(
                 {
-                    "name": candidate.full_name if candidate else f"Application {application_id}",
+                    "name": candidate.full_name
+                    if candidate
+                    else f"Application {application_id}",
                     "match_score": match.match_score if match else None,
                     "match_strengths": (match.strengths or []) if match else [],
                     "match_weaknesses": (match.weaknesses or []) if match else [],

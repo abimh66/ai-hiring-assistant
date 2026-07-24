@@ -26,12 +26,25 @@ def ensure_bucket() -> None:
         client.create_bucket(Bucket=settings.s3_bucket)
 
 
-def upload_file(file_bytes: bytes, filename: str, content_type: str | None) -> str:
-    key = f"{uuid.uuid4()}-{filename}"
+def make_key(filename: str) -> str:
+    """Generate a unique object key without touching the store.
+
+    Lets the API layer reserve a key synchronously (fast) and hand the actual
+    upload of the bytes off to the worker via ``put_bytes``.
+    """
+    return f"{uuid.uuid4()}-{filename}"
+
+
+def put_bytes(key: str, file_bytes: bytes, content_type: str | None) -> None:
     extra_args = {"ContentType": content_type} if content_type else {}
     get_s3_resource().Bucket(settings.s3_bucket).put_object(
         Key=key, Body=file_bytes, **extra_args
     )
+
+
+def upload_file(file_bytes: bytes, filename: str, content_type: str | None) -> str:
+    key = make_key(filename)
+    put_bytes(key, file_bytes, content_type)
     return key
 
 

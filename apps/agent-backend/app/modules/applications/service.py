@@ -1,9 +1,11 @@
+import base64
+
 from fastapi import HTTPException, UploadFile, status
 from sqlmodel import Session, select
 
 from app.modules.applications.models import Application
 from app.modules.applications.schemas import ApplicationRead, ApplicationUpdate, ApplicationUploadResult
-from app.modules.storage.client import upload_file
+from app.modules.storage.client import make_key, upload_file
 from app.worker.tasks import analyze_resume
 
 
@@ -47,7 +49,10 @@ async def create_applications_with_resumes(
         filename = resume.filename or "resume"
         try:
             resume_bytes = await resume.read()
-            resume_key = upload_file(resume_bytes, filename, resume.content_type)
+            # Reserve the object key synchronously (no network) and hand the
+            # actual store write + analysis to the worker, so this request
+            # returns immediately regardless of batch size.
+            resume_key = make_key(filename)
 
             application = Application(
                 candidate_id=None,
@@ -59,7 +64,11 @@ async def create_applications_with_resumes(
             session.commit()
             session.refresh(application)
 
-            analyze_resume.delay(application.id)
+            analyze_resume.delay(
+                application.id,
+                base64.b64encode(resume_bytes).decode("ascii"),
+                resume.content_type,
+            )
 
             results.append(
                 ApplicationUploadResult(

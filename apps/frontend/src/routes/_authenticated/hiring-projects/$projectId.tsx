@@ -327,8 +327,9 @@ function UploadResumeDialog({ projectId }: { projectId: number }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
       'application/pdf': ['.pdf'],
-      'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'text/plain': ['.txt'],
+      'text/markdown': ['.md'],
     },
     maxFiles: MAX_BULK_FILES,
     onDrop: (accepted) => setFiles((prev) => [...prev, ...accepted].slice(0, MAX_BULK_FILES)),
@@ -368,7 +369,8 @@ function UploadResumeDialog({ projectId }: { projectId: number }) {
           >
             <input {...getInputProps()} />
             <p className="text-muted-foreground">
-              Drag and drop resumes here, or click to browse (PDF/DOC/DOCX, up to {MAX_BULK_FILES})
+              Drag and drop resumes here, or click to browse (PDF/DOCX/TXT/MD, up to{' '}
+              {MAX_BULK_FILES})
             </p>
           </div>
           {files.length > 0 && (
